@@ -1,34 +1,63 @@
 import streamlit as st
-from transformers import pipeline
-from utils import analyze_sentence, research_answer  # utils'ten alıyoruz
+from googletrans import Translator
+from web import search
 
-st.set_page_config(page_title="Cat CPT Lite", layout="centered")
-st.title("Cat CPT Lite")
+# Başlık
+st.set_page_config(page_title="Cat CPT Lite", layout="wide")
+st.title("🐱 Cat CPT Lite")
 
-# GPT2 text-generation pipeline
-@st.cache_resource
-def load_generator():
-    return pipeline('text-generation', model='gpt2')
+# Translator (otomatik Türkçe-İngilizce çeviri)
+translator = Translator()
 
-generator = load_generator()
+# Mesaj geçmişi
+if "messages" not in st.session_state:
+    st.session_state["messages"] = []
 
-def chat_answer(chat_part):
-    if not chat_part:
-        return ""
-    result = generator(chat_part, max_length=50, num_return_sequences=1)
-    return result[0]['generated_text']
+# Kullanıcı giriş kutusu
+user_input = st.chat_input("Bir şey yaz...")
 
-# Kullanıcı arayüzü
-user_input = st.text_input("Bir şeyler yaz:")
+# Fonksiyon: günlük mü soru mu?
+def is_question(text: str) -> bool:
+    return "?" in text or any(word in text.lower() for word in ["ara", "nedir", "kimdir", "ne zaman", "nasıl", "kaç", "hangi"])
+
+# Mesajları göster
+for role, msg in st.session_state["messages"]:
+    with st.chat_message(role):
+        st.markdown(msg)
 
 if user_input:
-    chat_part, research_part = analyze_sentence(user_input)
-    
-    response = ""
-    
-    if chat_part:
-        response += "💬 Sohbet: " + chat_answer(chat_part) + "\n\n"
-    if research_part:
-        response += "🔎 Araştırma: " + research_answer(research_part)
-    
-    st.write(response)
+    # Kullanıcı mesajı göster
+    with st.chat_message("user"):
+        st.markdown(user_input)
+    st.session_state["messages"].append(("user", user_input))
+
+    # Analiz
+    if is_question(user_input):
+        with st.chat_message("assistant"):
+            st.markdown("🔎 Araştırıyorum...")
+
+        # İngilizceye çevir
+        translated_q = translator.translate(user_input, src="tr", dest="en").text
+
+        # Web araması yap
+        results = search(translated_q)
+        if results:
+            answer = f"🌍 İşte bulduklarım:\n\n"
+            for r in results[:3]:
+                # Türkçe'ye çevirerek yaz
+                translated_title = translator.translate(r['title'], src="en", dest="tr").text
+                translated_snippet = translator.translate(r['snippet'], src="en", dest="tr").text
+                answer += f"- **{translated_title}**: {translated_snippet}\n\n[{r['link']}]({r['link']})\n\n"
+        else:
+            answer = "❌ Hiç sonuç bulamadım."
+
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+        st.session_state["messages"].append(("assistant", answer))
+
+    else:
+        # Günlük cevap ver
+        reply = f"😺 Güzel söyledin! '{user_input}' hakkında sohbet edebiliriz."
+        with st.chat_message("assistant"):
+            st.markdown(reply)
+        st.session_state["messages"].append(("assistant", reply))
