@@ -1,10 +1,9 @@
 import streamlit as st
 from transformers import pipeline
-import requests
-from bs4 import BeautifulSoup
+from utils import analyze_sentence, research_answer  # utils'ten alıyoruz
 
 st.set_page_config(page_title="Cat CPT Lite", layout="centered")
-st.title("Cat CPT Lite")  # Başlığı sadece Cat CPT Lite yaptık
+st.title("Cat CPT Lite")
 
 # GPT2 text-generation pipeline
 @st.cache_resource
@@ -13,35 +12,6 @@ def load_generator():
 
 generator = load_generator()
 
-# Cümle analiz fonksiyonu
-def analyze_sentence(sentence):
-    question_words = ["ne", "nasıl", "kim", "nerede", "hangi", "neden", "?"]
-    research_part = ""
-    chat_part = ""
-
-    if any(word in sentence.lower() for word in question_words):
-        research_part = sentence
-        chat_part = sentence.replace(research_part, "")
-    else:
-        chat_part = sentence
-
-    return chat_part.strip(), research_part.strip()
-
-# Araştırma fonksiyonu
-def research_answer(query):
-    try:
-        url = f"https://en.wikipedia.org/wiki/{query.replace(' ', '_')}"
-        response = requests.get(url, timeout=5)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        paragraphs = soup.find_all('p')
-        for p in paragraphs:
-            if len(p.text) > 50:
-                return p.text[:500] + "..."
-        return "Araştırma sonucu bulunamadı."
-    except:
-        return "Araştırma sırasında bir hata oluştu."
-
-# Sohbet fonksiyonu
 def chat_answer(chat_part):
     if not chat_part:
         return ""
