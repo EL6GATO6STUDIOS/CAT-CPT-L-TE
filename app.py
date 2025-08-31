@@ -1,13 +1,14 @@
 import streamlit as st
-from googletrans import Translator
+from deep_translator import GoogleTranslator
 from web import search
 
 # Başlık
 st.set_page_config(page_title="Cat CPT Lite", layout="wide")
 st.title("🐱 Cat CPT Lite")
 
-# Translator (otomatik Türkçe-İngilizce çeviri)
-translator = Translator()
+# Translator (deep-translator)
+def translate(text, src="auto", dest="tr"):
+    return GoogleTranslator(source=src, target=dest).translate(text)
 
 # Mesaj geçmişi
 if "messages" not in st.session_state:
@@ -37,16 +38,15 @@ if user_input:
             st.markdown("🔎 Araştırıyorum...")
 
         # İngilizceye çevir
-        translated_q = translator.translate(user_input, src="tr", dest="en").text
+        translated_q = translate(user_input, src="tr", dest="en")
 
         # Web araması yap
         results = search(translated_q)
         if results:
             answer = f"🌍 İşte bulduklarım:\n\n"
             for r in results[:3]:
-                # Türkçe'ye çevirerek yaz
-                translated_title = translator.translate(r['title'], src="en", dest="tr").text
-                translated_snippet = translator.translate(r['snippet'], src="en", dest="tr").text
+                translated_title = translate(r['title'], src="en", dest="tr")
+                translated_snippet = translate(r['snippet'], src="en", dest="tr")
                 answer += f"- **{translated_title}**: {translated_snippet}\n\n[{r['link']}]({r['link']})\n\n"
         else:
             answer = "❌ Hiç sonuç bulamadım."
